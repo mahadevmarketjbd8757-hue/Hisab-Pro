@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HISAB PRO - हिसाब किताब डिजिटल खाता</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & Noto Sans Devanagari -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- html2pdf.js for PDF Report Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#0f281e',
+              primary: '#1b4332',
+              medium: '#2d6a4f',
+              light: '#40916c',
+              accent: '#ffb703',
+              gold: '#d4af37'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans Devanagari', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Global Styles & Scrollbar Customization */
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* Swipe container styles */
+    .swipe-item {
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* Custom Modal Overlay Blur */
+    .glass-modal {
+      background: rgba(15, 40, 30, 0.65);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Print styles for html2pdf */
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+
+<body class="h-full text-slate-800 font-sans flex flex-col justify-between max-w-md mx-auto shadow-2xl relative bg-slate-50 border-x border-slate-200 min-h-screen pb-20">
+
+  <!-- ================= HEADER SECTION ================= -->
+  <header class="bg-brand-primary text-white p-4 shadow-md sticky top-0 z-30">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-accent text-brand-dark flex items-center justify-center font-black text-xl shadow">
+          <i class="fa-solid fa-[#000]"></i>H
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight flex items-center gap-1.5" id="headerShopName">
+            HISAB PRO
+            <span id="proBadgeHeader" class="hidden bg-amber-400 text-slate-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded shadow-sm">PRO</span>
+          </h1>
+          <p class="text-xs text-emerald-200" id="headerShopId">Shop ID: Syncing...</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="openAdminModal()" class="bg-brand-medium hover:bg-brand-light text-amber-300 p-2 rounded-lg text-sm flex items-center gap-1 border border-emerald-600 transition">
+          <i class="fa-solid fa-user-shield"></i>
+          <span class="text-xs font-semibold">एडमिन</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT CONTAINER ================= -->
+  <main class="flex-1 p-4 overflow-y-auto no-scrollbar" id="mainScrollArea">
+
+    <!-- 1. CUSTOMERS TAB -->
+    <section id="tab-customers" class="tab-content space-y-4">
+      
+      <!-- Summary Card -->
+      <div class="bg-gradient-to-r font-sans from-brand-primary to-brand-medium rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 opacity-10 text-white text-8xl">
+          <i class="fa-solid fa-calculator"></i>
+        </div>
+        <p class="text-xs text-emerald-200 uppercase font-semibold tracking-wider">कुल बाकी (Total Balance)</p>
+        <div class="text-3xl font-extrabold mt-1 text-amber-300" id="dashTotalBalance">₹0.00</div>
+        <div class="mt-3 pt-3 border-t border-emerald-700/60 flex justify-between items-center text-xs text-emerald-100">
+          <span>कुल ग्राहक: <strong id="dashTotalCustomers" class="text-white text-sm">0</strong></span>
+          <span class="bg-brand-dark/40 px-2 py-1 rounded text-[11px]"><i class="fa-solid fa-shield-halved text-amber-400 mr-1"></i>सुरक्षित खाता</span>
+        </div>
+      </div>
+
+      <!-- Action & Search Bar -->
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
+          <input type="text" id="customerSearchInput" oninput="renderCustomerList()" placeholder="ग्राहक नाम या उपनाम से खोजें..." 
+                 class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary shadow-sm">
+        </div>
+        <button onclick="openAddCustomerModal()" class="bg-brand-primary hover:bg-brand-medium text-white px-4 py-2.5 rounded-xl font-medium text-sm flex items-center gap-1.5 shadow transition shrink-0">
+          <i class="fa-solid fa-user-plus text-amber-400"></i> नया ग्राहक
+        </button>
+      </div>
+
+      <!-- Customer List Container -->
+      <div class="space-y-2.5" id="customerListContainer">
+        <!-- Dynamic Customers Rendered Here -->
+      </div>
+    </section>
+
+    <!-- 2. SUPPLIERS / MAHAJAN TAB -->
+    <section id="tab-suppliers" class="tab-content space-y-4 hidden">
+      <div class="bg-slate-800 text-white p-4 rounded-2xl shadow">
+        <h2 class="font-bold text-lg text-amber-400"><i class="fa-solid fa-truck-field mr-2"></i>सप्लायर / महाजन खाता</h2>
+        <p class="text-xs text-slate-300 mt-1">आप अपने थोक विक्रेताओं और सप्लायरों का हिसाब यहाँ रख सकते हैं।</p>
+      </div>
+      
+      <div class="flex gap-2">
+        <input type="text" id="supplierSearchInput" oninput="renderSupplierList()" placeholder="सप्लायर खोजें..." 
+               class="flex-1 px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-700">
+        <button onclick="openAddSupplierModal()" class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow">
+          + नया सप्लायर
+        </button>
+      </div>
+
+      <div class="space-y-2.5" id="supplierListContainer">
+        <!-- Dynamic Suppliers Rendered Here -->
+      </div>
+    </section>
+
+    <!-- 3. REPORTS TAB -->
+    <section id="tab-reports" class="tab-content space-y-4 hidden">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <h2 class="font-bold text-slate-800 text-base flex items-center justify-between">
+          <span><i class="fa-solid fa-chart-line text-brand-primary mr-2"></i>लेन-देन रिपोर्ट</span>
+          <button onclick="downloadReportPDF()" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 shadow">
+            <i class="fa-solid fa-file-pdf"></i> PDF डाउनलोड
+          </button>
+        </h2>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <label class="block text-slate-500 mb-1">से तिथि (From):</label>
+            <input type="date" id="reportStartDate" onchange="generateReportData()" class="w-full p-2 border rounded-lg bg-slate-50">
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">तक तिथि (To):</label>
+            <input type="date" id="reportEndDate" onchange="generateReportData()" class="w-full p-2 border rounded-lg bg-slate-50">
+          </div>
+        </div>
+      </div>
+
+      <!-- Report Summary Stats -->
+      <div id="pdfReportArea" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="border-b border-slate-100 pb-2">
+          <h3 class="font-bold text-slate-800 text-sm" id="reportShopHeader">डिजिटल रिपोर्ट विवरण</h3>
+          <p class="text-[11px] text-slate-500" id="reportDateRange">समयावधि: सभी लेन-देन</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-red-50 p-3 rounded-xl border border-red-100">
+            <p class="text-[11px] text-red-600 font-semibold">कुल उधार दिया (Given)</p>
+            <p class="text-lg font-bold text-red-700 mt-1" id="reportTotalGiven">₹0.00</p>
+          </div>
+          <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+            <p class="text-[11px] text-emerald-600 font-semibold">कुल जमा हुआ (Received)</p>
+            <p class="text-lg font-bold text-emerald-700 mt-1" id="reportTotalReceived">₹0.00</p>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <h4 class="font-semibold text-xs text-slate-700 mb-2">हाल की गतिविधि</h4>
+          <div id="reportTransactionList" class="space-y-1.5 text-xs">
+            <!-- Dynamic Transactions -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SETTINGS & BACKUP TAB -->
+    <section id="tab-settings" class="tab-content space-y-4 hidden">
+      <!-- Profile Box -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-bold text-slate-800 text-base" id="settOwnerName">--</h3>
+            <p class="text-xs text-slate-500" id="settShopName">--</p>
+            <p class="text-xs text-slate-400 mt-0.5" id="settAddress">--</p>
+          </div>
+          <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold" id="settShopIdBadge">ID: --</span>
+        </div>
+      </div>
+
+      <!-- WhatsApp Share Button -->
+      <button onclick="shareAppOnWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow transition">
+        <i class="fa-brands fa-whatsapp text-xl"></i> WhatsApp पर ऐप शेयर करें
+      </button>
+
+      <!-- Backup & Restore -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <h3 class="font-bold text-slate-800 text-sm border-b pb-2"><i class="fa-solid fa-database text-brand-medium mr-2"></i>डेटा बैकअप व रीस्टोर (Offline)</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="exportDataBackup()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1">
+            <i class="fa-solid fa-download"></i> JSON बैकअप डाउनलोड
+          </button>
+          <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-upload"></i> डेटा रीस्टोर करें
+            <input type="file" accept=".json" onchange="importDataBackup(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+
+      <!-- PRO Upgrade Card -->
+      <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 p-4 rounded-2xl shadow space-y-2">
+        <div class="flex justify-between items-center">
+          <h3 class="font-black text-lg"><i class="fa-solid fa-crown mr-1"></i>HISAB PRO प्लान</h3>
+          <span class="bg-slate-900 text-amber-400 text-xs px-2.5 py-1 rounded-full font-bold">₹299 / वर्ष</span>
+        </div>
+        <p class="text-xs text-slate-900 font-medium">असीमित PDF डाउनलोड, सीधा WhatsApp रिमाइंडर, सप्लायर खाता एवं सुरक्षित ऑटो-बैकअप सुविधा पाएँ।</p>
+        <div class="bg-white/90 p-3 rounded-xl text-xs space-y-1 mt-2 text-slate-800">
+          <p><strong>Merchant UPI:</strong> <span class="select-all font-mono font-bold text-slate-900">sabit87573137@barodampay</span></p>
+          <p><strong>Bank:</strong> Bank of Baroda</p>
+          <p><strong>WhatsApp Support:</strong> +91 8757360888</p>
+        </div>
+      </div>
+
+      <!-- Direct External Links -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <a href="https://mahadevmarketjbd8757-hue.github.io/Mahadev-Market-organisation-/" target="_blank" class="bg-white p-3 rounded-xl border border-slate-200 text-center font-medium text-brand-primary hover:underline">
+          <i class="fa-solid fa-globe mr-1"></i> महादेव मार्केट वेबसाइट
+        </a>
+        <a href="https://youtube.com/@Mahadev_Market_MM" target="_blank" class="bg-white p-3 rounded-xl border border-slate-200 text-center font-medium text-red-600 hover:underline">
+          <i class="fa-brands fa-youtube mr-1"></i> YouTube चैनल
+        </a>
+      </div>
+
+      <!-- Dangerous Action: Reset App -->
+      <div class="pt-2">
+        <button onclick="start3StepReset()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i> ऐप का सारा डेटा रिसेट करें (Strict 3-Step)
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= CUSTOMER DETAIL VIEW OVERLAY ================= -->
+  <div id="customerDetailOverlay" class="fixed inset-0 bg-white z-40 hidden flex-col">
+    <div class="bg-brand-primary text-white p-4 flex items-center justify-between shadow">
+      <div class="flex items-center space-x-3">
+        <button onclick="closeCustomerDetail()" class="text-white hover:text-amber-300 text-lg">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div>
+          <h2 class="font-bold text-base" id="detailCustomerName">--</h2>
+          <p class="text-xs text-emerald-200" id="detailCustomerPhone">--</p>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-[10px] text-emerald-200">कुल बकाया</div>
+        <div class="text-lg font-bold text-amber-300" id="detailCustomerBalance">₹0.00</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="p-3 bg-slate-100 border-b flex gap-2">
+      <button onclick="sendWhatsAppReminder()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow">
+        <i class="fa-brands fa-whatsapp text-base"></i> WhatsApp रिमाइंडर
+      </button>
+      <button onclick="openTransactionModal('GIVE')" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-xl text-xs font-semibold shadow">
+        ➖ उधार दिया
+      </button>
+      <button onclick="openTransactionModal('GOT')" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-2 px-3 rounded-xl text-xs font-semibold shadow">
+        ➕ जमा हुआ
+      </button>
+    </div>
+
+    <!-- Transaction History List -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-2.5" id="customerTxList">
+      <!-- Dynamic Tx History -->
+    </div>
+  </div>
+
+  <!-- ================= BOTTOM NAVIGATION BAR ================= -->
+  <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 py-2 px-4 flex justify-around items-center z-30 shadow-lg">
+    <button onclick="switchTab('customers')" id="nav-customers" class="nav-btn text-brand-primary flex flex-col items-center gap-1">
+      <i class="fa-solid fa-users text-lg"></i>
+      <span class="text-[11px] font-bold">ग्राहक</span>
+    </button>
+    
+    <button onclick="switchTab('suppliers')" id="nav-suppliers" class="nav-btn text-slate-400 flex flex-col items-center gap-1">
+      <i class="fa-solid fa-truck-field text-lg"></i>
+      <span class="text-[11px] font-medium">सप्लायर</span>
+    </button>
+
+    <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn text-slate-400 flex flex-col items-center gap-1">
+      <i class="fa-solid fa-chart-pie text-lg"></i>
+      <span class="text-[11px] font-medium">रिपोर्ट</span>
+    </button>
+
+    <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn text-slate-400 flex flex-col items-center gap-1">
+      <i class="fa-solid fa-gear text-lg"></i>
+      <span class="text-[11px] font-medium">सेटिंग्स</span>
+    </button>
+  </nav>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. REGISTRATION MODAL -->
+  <div id="registrationModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4 border border-slate-200">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 bg-brand-primary text-amber-400 rounded-2xl flex items-center justify-center text-2xl font-black mx-auto shadow">H</div>
+        <h2 class="text-xl font-bold text-slate-800">दुकानदार पंजीकरण</h2>
+        <p class="text-xs text-slate-500">HISAB PRO डिजिटल खाते में आपका स्वागत है</p>
+      </div>
+
+      <form onsubmit="handleRegistration(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">दुकानदार का नाम *</label>
+          <input type="text" id="regOwnerName" required placeholder="जैसे: सुजीत कुमार" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">दुकान / बिजनेस का नाम *</label>
+          <input type="text" id="regShopName" required placeholder="जैसे: महादेव मार्केट" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">पता / स्थान</label>
+          <input type="text" id="regAddress" placeholder="जैसे: जामुन बाजार" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">लॉगिन पासवर्ड (PIN) *</label>
+          <input type="password" id="regPassword" required placeholder="4 अंकों का PIN दर्ज करें" maxlength="6" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <button type="submit" class="w-full bg-brand-primary hover:bg-brand-medium text-white font-bold py-3 rounded-xl shadow transition text-sm">
+          खाता शुरू करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. ADD CUSTOMER MODAL (WITH DUPLICATE CHECK) -->
+  <div id="addCustomerModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-user-plus text-brand-primary mr-2"></i>नया ग्राहक जोड़ें</h3>
+        <button onclick="closeAddCustomerModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form onsubmit="handleAddCustomer(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">ग्राहक का पूरा नाम *</label>
+          <input type="text" id="custName" required placeholder="जैसे: राम शर्मा" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">उपनाम (Nickname / पहचान)</label>
+          <input type="text" id="custNickname" placeholder="जैसे: कालू, टेलर वाले" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">मोबाइल नंबर (WhatsApp)</label>
+          <input type="tel" id="custPhone" placeholder="10 अंकों का नंबर" maxlength="10" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">प्रारंभिक बकाया राशि (यदि कोई हो)</label>
+          <input type="number" id="custOpeningBalance" placeholder="0" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-brand-primary">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAddCustomerModal()" class="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-medium text-sm">रद्द करें</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-brand-medium text-white py-2.5 rounded-xl font-bold text-sm shadow">सुरक्षित करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. ADD TRANSACTION MODAL -->
+  <div id="transactionModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-base" id="txModalTitle">लेन-देन जोड़ें</h3>
+        <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form onsubmit="handleAddTransaction(event)" class="space-y-3">
+        <input type="hidden" id="txType">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">राशि (₹) *</label>
+          <input type="number" id="txAmount" step="0.01" required placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">विवरण / सामान का नाम (Optional)</label>
+          <input type="text" id="txNotes" placeholder="जैसे: 2 पैकेट चीनी, साबुन" class="w-full p-2.5 border rounded-xl text-sm">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeTransactionModal()" class="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-medium text-sm">रद्द करें</button>
+          <button type="submit" id="txSubmitBtn" class="flex-1 bg-brand-primary text-white py-2.5 rounded-xl font-bold text-sm shadow">सेव करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. MASTER ADMIN MODAL -->
+  <div id="adminModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4 border-2 border-amber-400">
+      
+      <!-- PIN Entry Screen -->
+      <div id="adminPinScreen" class="space-y-3">
+        <div class="text-center">
+          <i class="fa-solid fa-user-shield text-3xl text-brand-primary mb-1"></i>
+          <h3 class="font-bold text-slate-800 text-lg">मास्टर एडमिन लॉगिन</h3>
+          <p class="text-xs text-slate-500">कृपया एडमिन सिक्यूरिटी PIN दर्ज करें</p>
+        </div>
+        <input type="password" id="adminPinInput" maxlength="6" placeholder="PIN दर्ज करें" class="w-full text-center text-xl tracking-widest p-2.5 border rounded-xl">
+        <div class="flex gap-2">
+          <button onclick="closeAdminModal()" class="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl text-xs font-bold">रद्द करें</button>
+          <button onclick="verifyAdminPin()" class="flex-1 bg-brand-primary text-white py-2.5 rounded-xl text-xs font-bold shadow">लॉगिन करें</button>
+        </div>
+      </div>
+
+      <!-- Admin Panel Controls Screen -->
+      <div id="adminPanelScreen" class="space-y-4 hidden">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-sliders text-amber-500 mr-1"></i>मास्टर एडमिन कंट्रोल फ़ैनल</h3>
+          <button onclick="closeAdminModal()" class="text-slate-400 text-lg">&times;</button>
+        </div>
+
+        <!-- Registered Shops List & PRO Toggles -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-slate-600">पंजीकृत दुकानें (Registered Shopkeepers)</h4>
+          <div id="adminShopsList" class="max-h-40 overflow-y-auto space-y-2 text-xs border p-2 rounded-xl bg-slate-50">
+            <!-- Dynamic Admin Shop List -->
+          </div>
+        </div>
+
+        <!-- Supplier Module Switch -->
+        <div class="flex justify-between items-center bg-slate-100 p-3 rounded-xl">
+          <div>
+            <p class="text-xs font-bold text-slate-800">सप्लायर / महाजन खाता</p>
+            <p class="text-[10px] text-slate-500">निचले नेविगेशन बार में दिखाएँ/छिपाएँ</p>
+          </div>
+          <input type="checkbox" id="toggleSupplierModule" onchange="toggleSupplierModuleState(this.checked)" class="w-5 h-5 accent-brand-primary cursor-pointer">
+        </div>
+
+        <button onclick="closeAdminModal()" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold">
+          एडमिन पैनल से बाहर निकलें
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 5. ADD SUPPLIER MODAL -->
+  <div id="addSupplierModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-truck-field text-slate-800 mr-2"></i>नया सप्लायर जोड़ें</h3>
+        <button onclick="closeAddSupplierModal()" class="text-slate-400 text-lg">&times;</button>
+      </div>
+      <form onsubmit="handleAddSupplier(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">सप्लायर / फर्म का नाम *</label>
+          <input type="text" id="suppName" required placeholder="जैसे: गुप्ता ट्रेडर्स" class="w-full p-2.5 border rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">फ़ोन नंबर</label>
+          <input type="tel" id="suppPhone" placeholder="10 अंकों का नंबर" class="w-full p-2.5 border rounded-xl text-sm">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAddSupplierModal()" class="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-medium text-sm">रद्द करें</button>
+          <button type="submit" class="flex-1 bg-slate-800 text-white py-2.5 rounded-xl font-bold text-sm shadow">सुरक्षित करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. GENERAL NOTIFICATION POPUP MODAL -->
+  <div id="alertPopupModal" class="fixed inset-0 glass-modal flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5 space-y-3 text-center border-t-4 border-red-500">
+      <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-2xl mx-auto" id="alertIcon">
+        ⚠️
+      </div>
+      <h3 class="font-bold text-slate-800 text-base" id="alertTitle">सूचना</h3>
+      <p class="text-xs text-slate-600 leading-relaxed" id="alertMessage">संदेश...</p>
+      <button onclick="closeAlertPopup()" class="w-full bg-slate-800 text-white py-2 rounded-xl text-xs font-bold">
+        ठीक है (OK)
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
+  <script>
+    // Global Application State Schema
+    let appData = {
+      profile: null,            // Owner & Shop Details
+      isPro: false,             // Subscription Status
+      supplierModuleActive: true,// Show Supplier Tab
+      customers: [],            // List of customers
+      suppliers: [],            // List of suppliers
+      masterShops: []           // Master shop Registry for Admin
+    };
+
+    let activeCustomerId = null;
+    const MASTER_ADMIN_PIN = "8757";
+
+    // Initialize Application on Window Load
+    window.onload = function() {
+      loadStateFromLocalStorage();
+      
+      if (!appData.profile) {
+        openRegistrationModal();
+      } else {
+        updateUIProfileHeader();
+        renderCustomerList();
+        renderSupplierList();
+        checkSupplierModuleVisibility();
+      }
+    };
+
+    // Save Data to LocalStorage
+    function saveStateToLocalStorage() {
+      localStorage.setItem('HISAB_PRO_DATA', JSON.stringify(appData));
+    }
+
+    // Load Data from LocalStorage
+    function loadStateFromLocalStorage() {
+      const stored = localStorage.getItem('HISAB_PRO_DATA');
+      if (stored) {
+        try {
+          appData = JSON.parse(stored);
+        } catch(e) {
+          console.error("Failed to parse stored state", e);
+        }
+      }
+    }
+
+    // Custom Alert Popup Handler (No native alert)
+    function showAlertPopup(title, message, isWarning = true) {
+      document.getElementById('alertTitle').innerText = title;
+      document.getElementById('alertMessage').innerText = message;
+      document.getElementById('alertIcon').innerText = isWarning ? '⚠️' : '✅';
+      document.getElementById('alertPopupModal').classList.remove('hidden');
+    }
+
+    function closeAlertPopup() {
+      document.getElementById('alertPopupModal').classList.add('hidden');
+    }
+
+    // Modal Control Utils
+    function openRegistrationModal() { document.getElementById('registrationModal').classList.remove('hidden'); }
+    function closeRegistrationModal() { document.getElementById('registrationModal').classList.add('hidden'); }
+    function openAddCustomerModal() { document.getElementById('addCustomerModal').classList.remove('hidden'); }
+    function closeAddCustomerModal() { 
+      document.getElementById('addCustomerModal').classList.add('hidden');
+      document.getElementById('custName').value = '';
+      document.getElementById('custNickname').value = '';
+      document.getElementById('custPhone').value = '';
+      document.getElementById('custOpeningBalance').value = '';
+    }
+
+    // User Registration Submission
+    function handleRegistration(e) {
+      e.preventDefault();
+      const owner = document.getElementById('regOwnerName').value.trim();
+      const shop = document.getElementById('regShopName').value.trim();
+      const addr = document.getElementById('regAddress').value.trim();
+      const pin = document.getElementById('regPassword').value.trim();
+
+      const shopId = 'MM-' + Math.floor(1000 + Math.random() * 9000);
+
+      appData.profile = { ownerName: owner, shopName: shop, address: addr, pin: pin, shopId: shopId };
+      appData.isPro = false;
+      
+      // Sync to Master Shops list
+      if(!appData.masterShops) appData.masterShops = [];
+      appData.masterShops.push({ shopId: shopId, shopName: shop, ownerName: owner, isPro: false });
+
+      saveStateToLocalStorage();
+      closeRegistrationModal();
+      updateUIProfileHeader();
+      renderCustomerList();
+    }
+
+    // Update Header and Settings Info
+    function updateUIProfileHeader() {
+      if(!appData.profile) return;
+      document.getElementById('headerShopName').childNodes[0].nodeValue = appData.profile.shopName + " ";
+      document.getElementById('headerShopId').innerText = "Shop ID: " + appData.profile.shopId;
+      
+      document.getElementById('settOwnerName').innerText = appData.profile.ownerName;
+      document.getElementById('settShopName').innerText = appData.profile.shopName;
+      document.getElementById('settAddress').innerText = appData.profile.address || 'स्थान दर्ज नहीं';
+      document.getElementById('settShopIdBadge').innerText = "ID: " + appData.profile.shopId;
+
+      const proBadge = document.getElementById('proBadgeHeader');
+      if (appData.isPro) {
+        proBadge.classList.remove('hidden');
+      } else {
+        proBadge.classList.add('hidden');
+      }
+    }
+
+    // Dynamic Navigation Switcher
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(el => {
+        el.classList.remove('text-brand-primary');
+        el.classList.add('text-slate-400');
+      });
+
+      document.getElementById('tab-' + tabName).classList.remove('hidden');
+      const activeNav = document.getElementById('nav-' + tabName);
+      if(activeNav) {
+        activeNav.classList.remove('text-slate-400');
+        activeNav.classList.add('text-brand-primary');
+      }
+
+      if (tabName === 'reports') {
+        generateReportData();
+      }
+    }
+
+    /* =========================================================================
+       CRITICAL FIX: DUPLICATE CUSTOMER NAME PREVENTION LOGIC
+       ========================================================================= */
+    function handleAddCustomer(e) {
+      e.preventDefault();
+      const rawName = document.getElementById('custName').value;
+      const cleanName = rawName.trim();
+      const nickname = document.getElementById('custNickname').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      const openingBal = parseFloat(document.getElementById('custOpeningBalance').value) || 0;
+
+      if (!cleanName) {
+        showAlertPopup("त्रुटि", "कृपया ग्राहक का नाम दर्ज करें।");
+        return;
+      }
+
+      // 1. Strict Duplicate Check (Case-Insensitive & Trimmed)
+      const isDuplicate = appData.customers.some(customer => 
+        customer.name.trim().toLowerCase() === cleanName.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        // Block submission and show custom warning popup
+        showAlertPopup(
+          "ग्राहक नाम पहले से मौजूद है", 
+          `⚠️ '${cleanName}' नाम का ग्राहक आपके खाते में पहले से मौजूद है! कृपया किसी दूसरे नाम या उपनाम (Nickname) का उपयोग करें।`, 
+          true
+        );
+        return; // Terminate execution immediately
+      }
+
+      // 2. Create New Customer Record if unique
+      const newCustomer = {
+        id: 'CUST-' + Date.now(),
+        name: cleanName,
+        nickname: nickname,
+        phone: phone,
+        balance: openingBal,
+        transactions: []
+      };
+
+      if (openingBal > 0) {
+        newCustomer.transactions.push({
+          id: 'TX-' + Date.now(),
+          type: 'GIVE',
+          amount: openingBal,
+          notes: 'प्रारंभिक बकाया (Opening Balance)',
+          date: new Date().toISOString()
+        });
+      }
+
+      appData.customers.push(newCustomer);
+      saveStateToLocalStorage();
+      closeAddCustomerModal();
+      renderCustomerList();
+      showAlertPopup("सफलता", `'${cleanName}' को ग्राहक सूची में जोड़ दिया गया है।`, false);
+    }
+
+    // Render Customer List with Swipe-to-Delete Support
+    function renderCustomerList() {
+      const container = document.getElementById('customerListContainer');
+      const searchQuery = document.getElementById('customerSearchInput').value.toLowerCase().trim();
+      container.innerHTML = '';
+
+      let totalBal = 0;
+      let count = 0;
+
+      const filtered = appData.customers.filter(c => {
+        return c.name.toLowerCase().includes(searchQuery) || (c.nickname && c.nickname.toLowerCase().includes(searchQuery));
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+            <i class="fa-solid fa-users-slash text-3xl mb-2"></i>
+            <p class="text-xs">कोई ग्राहक नहीं मिला</p>
+          </div>
+        `;
+      } else {
+        filtered.forEach(cust => {
+          totalBal += cust.balance;
+          count++;
+
+          const card = document.createElement('div');
+          card.className = "relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm";
+          
+          card.innerHTML = `
+            <!-- Delete Action Background (Revealed on Swipe) -->
+            <div class="absolute inset-y-0 right-0 bg-red-600 text-white w-20 flex items-center justify-center font-bold text-xs rounded-r-2xl" 
+                 onclick="deleteCustomer('${cust.id}', ${cust.balance})">
+              <i class="fa-solid fa-trash mr-1"></i> हटाएं
+            </div>
+
+            <!-- Foreground Content Card -->
+            <div class="swipe-item bg-white p-3.5 flex justify-between items-center relative z-10 cursor-pointer" 
+                 id="cust-card-${cust.id}"
+                 onclick="openCustomerDetail('${cust.id}')">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-brand-primary/10 text-brand-primary font-bold flex items-center justify-center text-sm shrink-0">
+                  ${cust.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                    ${cust.name}
+                    ${cust.nickname ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-normal">(${cust.nickname})</span>` : ''}
+                  </h4>
+                  <p class="text-xs text-slate-400">${cust.phone || 'फ़ोन नंबर दर्ज नहीं'}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-extrabold ${cust.balance > 0 ? 'text-red-600' : (cust.balance < 0 ? 'text-emerald-600' : 'text-slate-400')}">
+                  ₹${Math.abs(cust.balance).toFixed(2)}
+                </div>
+                <div class="text-[10px] text-slate-400">
+                  ${cust.balance > 0 ? 'बाकी है (Lene)' : (cust.balance < 0 ? 'जमा है (Dene)' : 'चुक्ता (Settled)')}
+                </div>
+              </div>
+            </div>
+          `;
+
+          container.appendChild(card);
+          enableSwipeGesture(card.querySelector('.swipe-item'), cust.id);
+        });
+      }
+
+      document.getElementById('dashTotalBalance').innerText = `₹${totalBal.toFixed(2)}`;
+      document.getElementById('dashTotalCustomers').innerText = count;
+    }
+
+    // Touch Swipe Left Logic for Deletion
+    function enableSwipeGesture(element, custId) {
+      let startX = 0;
+      let currentX = 0;
+
+      element.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+      }, {passive: true});
+
+      element.addEventListener('touchmove', e => {
+        currentX = e.touches[0].clientX;
+        let diff = currentX - startX;
+        if (diff < 0 && diff > -90) {
+          element.style.transform = `translateX(${diff}px)`;
+        }
+      }, {passive: true});
+
+      element.addEventListener('touchend', () => {
+        let diff = currentX - startX;
+        if (diff < -50) {
+          element.style.transform = `translateX(-80px)`;
+        } else {
+          element.style.transform = `translateX(0px)`;
+        }
+      });
+    }
+
+    // Delete Customer Safeguard (Only allowed if balance is ₹0)
+    function deleteCustomer(custId, balance) {
+      if (balance !== 0) {
+        showAlertPopup("हटाया नहीं जा सकता", "⚠️ केवल ₹0.00 बकाया वाले ग्राहकों को ही डिलीट किया जा सकता है। कृपया पहले बकाया राशि चुक्ता करें।");
+        renderCustomerList();
+        return;
+      }
+
+      if (confirm("क्या आप वाकई इस ग्राहक को हटाना चाहते हैं?")) {
+        appData.customers = appData.customers.filter(c => c.id !== custId);
+        saveStateToLocalStorage();
+        renderCustomerList();
+        showAlertPopup("हटाया गया", "ग्राहक को सफलतापूर्वक हटा दिया गया है।", false);
+      } else {
+        renderCustomerList();
+      }
+    }
+
+    // Customer Detail Overlay View
+    function openCustomerDetail(custId) {
+      activeCustomerId = custId;
+      const cust = appData.customers.find(c => c.id === custId);
+      if(!cust) return;
+
+      document.getElementById('detailCustomerName').innerText = cust.name + (cust.nickname ? ` (${cust.nickname})` : '');
+      document.getElementById('detailCustomerPhone').innerText = cust.phone ? `📱 ${cust.phone}` : 'कोई फोन नंबर नहीं';
+      document.getElementById('detailCustomerBalance').innerText = `₹${cust.balance.toFixed(2)}`;
+
+      renderCustomerTransactions(cust);
+      document.getElementById('customerDetailOverlay').classList.remove('hidden');
+      document.getElementById('customerDetailOverlay').classList.add('flex');
+    }
+
+    function closeCustomerDetail() {
+      activeCustomerId = null;
+      document.getElementById('customerDetailOverlay').classList.add('hidden');
+      document.getElementById('customerDetailOverlay').classList.remove('flex');
+    }
+
+    function renderCustomerTransactions(cust) {
+      const container = document.getElementById('customerTxList');
+      container.innerHTML = '';
+
+      if (!cust.transactions || cust.transactions.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-slate-400">
+            <i class="fa-solid fa-receipt text-3xl mb-2"></i>
+            <p class="text-xs">कोई लेन-देन का इतिहास नहीं है</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort recent first
+      const sorted = [...cust.transactions].reverse();
+      sorted.forEach(tx => {
+        const txDate = new Date(tx.date).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+        const isGive = tx.type === 'GIVE';
+
+        const row = document.createElement('div');
+        row.className = `p-3 rounded-xl border flex justify-between items-center ${isGive ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}`;
+        
+        row.innerHTML = `
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold ${isGive ? 'text-red-700' : 'text-emerald-700'}">
+                ${isGive ? '➖ उधार दिया' : '➕ जमा प्राप्त हुआ'}
+              </span>
+              <span class="text-[10px] text-slate-400">| ${txDate}</span>
+            </div>
+            ${tx.notes ? `<p class="text-xs text-slate-600 mt-0.5">${tx.notes}</p>` : ''}
+          </div>
+          <div class="text-sm font-extrabold ${isGive ? 'text-red-600' : 'text-emerald-600'}">
+            ${isGive ? '-' : '+'}₹${parseFloat(tx.amount).toFixed(2)}
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Transaction Modals (Give / Got)
+    function openTransactionModal(type) {
+      document.getElementById('txType').value = type;
+      document.getElementById('txModalTitle').innerText = type === 'GIVE' ? '➖ उधार राशि दर्ज करें' : '➕ जमा राशि दर्ज करें';
+      document.getElementById('txSubmitBtn').className = type === 'GIVE' ? 'flex-1 bg-red-600 text-white py-2.5 rounded-xl font-bold text-sm shadow' : 'flex-1 bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-sm shadow';
+      document.getElementById('transactionModal').classList.remove('hidden');
+    }
+
+    function closeTransactionModal() {
+      document.getElementById('transactionModal').classList.add('hidden');
+      document.getElementById('txAmount').value = '';
+      document.getElementById('txNotes').value = '';
+    }
+
+    function handleAddTransaction(e) {
+      e.preventDefault();
+      const type = document.getElementById('txType').value;
+      const amt = parseFloat(document.getElementById('txAmount').value);
+      const notes = document.getElementById('txNotes').value.trim();
+
+      if (!amt || amt <= 0) {
+        showAlertPopup("त्रुटि", "कृपया सही राशि दर्ज करें।");
+        return;
+      }
+
+      const cust = appData.customers.find(c => c.id === activeCustomerId);
+      if (!cust) return;
+
+      if (type === 'GIVE') {
+        cust.balance += amt;
+      } else {
+        cust.balance -= amt;
+      }
+
+      cust.transactions.push({
+        id: 'TX-' + Date.now(),
+        type: type,
+        amount: amt,
+        notes: notes,
+        date: new Date().toISOString()
+      });
+
+      saveStateToLocalStorage();
+      closeTransactionModal();
+      openCustomerDetail(activeCustomerId);
+      renderCustomerList();
+    }
+
+    // WhatsApp Reminder Feature (PRO Gated)
+    function sendWhatsAppReminder() {
+      if (!appData.isPro) {
+        showAlertPopup("PRO फ़ीचर", "🔒 WhatsApp पेमेंट रिमाइंडर केवल PRO सदस्यों के लिए उपलब्ध है। कृपया सेटिंग्स से PRO में अपग्रेड करें।");
+        return;
+      }
+
+      const cust = appData.customers.find(c => c.id === activeCustomerId);
+      if (!cust || !cust.phone) {
+        showAlertPopup("फ़ोन नंबर गायब", "इस ग्राहक का वैध WhatsApp नंबर दर्ज नहीं है।");
+        return;
+      }
+
+      const msg = `नमस्ते ${cust.name} जी, आपके ${appData.profile.shopName} में ₹${cust.balance.toFixed(2)} बाकी हैं। कृपया जल्द से जल्द भुगतान करने की कृपा करें। धन्यवाद!`;
+      const url = `https://wa.me/91${cust.phone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+
+    // Supplier Ledger Section Functions
+    function openAddSupplierModal() { document.getElementById('addSupplierModal').classList.remove('hidden'); }
+    function closeAddSupplierModal() { document.getElementById('addSupplierModal').classList.add('hidden'); }
+
+    function handleAddSupplier(e) {
+      e.preventDefault();
+      const name = document.getElementById('suppName').value.trim();
+      const phone = document.getElementById('suppPhone').value.trim();
+
+      if(!name) return;
+
+      if (!appData.suppliers) appData.suppliers = [];
+      appData.suppliers.push({
+        id: 'SUPP-' + Date.now(),
+        name: name,
+        phone: phone,
+        balance: 0
+      });
+
+      saveStateToLocalStorage();
+      closeAddSupplierModal();
+      renderSupplierList();
+    }
+
+    function renderSupplierList() {
+      const container = document.getElementById('supplierListContainer');
+      const searchQuery = (document.getElementById('supplierSearchInput')?.value || '').toLowerCase().trim();
+      container.innerHTML = '';
+
+      if (!appData.suppliers || appData.suppliers.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+            <i class="fa-solid fa-truck text-3xl mb-2"></i>
+            <p class="text-xs">कोई सप्लायर खाता नहीं है</p>
+          </div>
+        `;
+        return;
+      }
+
+      appData.suppliers.filter(s => s.name.toLowerCase().includes(searchQuery)).forEach(supp => {
+        const item = document.createElement('div');
+        item.className = "bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center";
+        item.innerHTML = `
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm">${supp.name}</h4>
+            <p class="text-xs text-slate-400">${supp.phone || 'कोई नंबर नहीं'}</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs bg-slate-100 px-2 py-1 rounded font-bold text-slate-700">सप्लायर</span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // Reports PDF Exporting & Calculation
+    function generateReportData() {
+      let totalGiven = 0;
+      let totalReceived = 0;
+      const txContainer = document.getElementById('reportTransactionList');
+      txContainer.innerHTML = '';
+
+      const startDate = document.getElementById('reportStartDate').value;
+      const endDate = document.getElementById('reportEndDate').value;
+
+      appData.customers.forEach(cust => {
+        cust.transactions.forEach(tx => {
+          const txDateStr = tx.date.split('T')[0];
+          
+          if (startDate && txDateStr < startDate) return;
+          if (endDate && txDateStr > endDate) return;
+
+          if (tx.type === 'GIVE') totalGiven += tx.amount;
+          if (tx.type === 'GOT') totalReceived += tx.amount;
+
+          const row = document.createElement('div');
+          row.className = "flex justify-between py-1 border-b border-slate-100";
+          row.innerHTML = `
+            <span>${cust.name} (${tx.type === 'GIVE' ? 'उधार' : 'जमा'})</span>
+            <span class="font-bold ${tx.type === 'GIVE' ? 'text-red-600' : 'text-emerald-600'}">₹${tx.amount.toFixed(2)}</span>
+          `;
+          txContainer.appendChild(row);
+        });
+      });
+
+      document.getElementById('reportTotalGiven').innerText = `₹${totalGiven.toFixed(2)}`;
+      document.getElementById('reportTotalReceived').innerText = `₹${totalReceived.toFixed(2)}`;
+      document.getElementById('reportShopHeader').innerText = appData.profile ? `${appData.profile.shopName} - रिपोर्ट` : 'डिजिटल रिपोर्ट';
+    }
+
+    function downloadReportPDF() {
+      if (!appData.isPro) {
+        showAlertPopup("PRO फ़ीचर", "🔒 PDF रिपोर्ट डाउनलोड केवल PRO उपयोगकर्ताओं के लिए उपलब्ध है। अपग्रेड करें!");
+        return;
+      }
+      const element = document.getElementById('pdfReportArea');
+      const opt = {
+        margin:       0.5,
+        filename:     `Hisab_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    // Backup & Restore System
+    function exportDataBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `HISAB_PRO_BACKUP_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importDataBackup(event) {
+      const fileReader = new FileReader();
+      fileReader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (importedData && importedData.profile) {
+            appData = importedData;
+            saveStateToLocalStorage();
+            location.reload();
+          } else {
+            showAlertPopup("गलत फ़ाइल", "अमान्य बैकअप JSON फ़ाइल फॉर्मेट!");
+          }
+        } catch(err) {
+          showAlertPopup("त्रुटि", "फ़ाइल पढ़ने में विफलता।");
+        }
+      };
+      fileReader.readAsText(event.target.files[0]);
+    }
+
+    // App Link Sharing
+    function shareAppOnWhatsApp() {
+      const shareUrl = "https://mahadevmarketjbd8757-hue.github.io/Mahadev-Market-organisation-/";
+      const text = `डिजिटल हिसाब किताब के लिए 'HISAB PRO' ऐप का इस्तेमाल करें: ${shareUrl}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    // Strict 3-Step Data Reset Mechanism
+    function start3StepReset() {
+      // Step 1: Confirm Prompt
+      if (!confirm("⚠️ चेतावनी (Step 1/3): क्या आप सचमुच ऐप का पूरा डेटा डिलीट करना चाहते हैं?")) return;
+
+      // Step 2: Text Input Match
+      const textInput = prompt("⚠️ पुष्टि (Step 2/3): हटाने के लिए बॉक्स में 'DELETE' टाइप करें:");
+      if (textInput !== 'DELETE') {
+        showAlertPopup("रद्द किया गया", "गलत शब्द दर्ज किया गया। डेटा सुरक्षित है।");
+        return;
+      }
+
+      // Step 3: Master Admin PIN Check
+      const pinInput = prompt("🔒 अंतिम सुरक्षा (Step 3/3): एडमिन PIN (8757) दर्ज करें:");
+      if (pinInput === MASTER_ADMIN_PIN) {
+        localStorage.removeItem('HISAB_PRO_DATA');
+        showAlertPopup("सफलता", "ऐप डेटा सफलतापूर्वक रिसेट कर दिया गया है।", false);
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showAlertPopup("सुरक्षा अलर्ट", "गलत PIN! डेटा रिसेट रद्द किया गया।");
+      }
+    }
+
+    // Master Admin Logic (PIN: 8757)
+    function openAdminModal() {
+      document.getElementById('adminPinScreen').classList.remove('hidden');
+      document.getElementById('adminPanelScreen').classList.add('hidden');
+      document.getElementById('adminPinInput').value = '';
+      document.getElementById('adminModal').classList.remove('hidden');
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminModal').classList.add('hidden');
+    }
+
+    function verifyAdminPin() {
+      const pin = document.getElementById('adminPinInput').value;
+      if (pin === MASTER_ADMIN_PIN) {
+        document.getElementById('adminPinScreen').classList.add('hidden');
+        document.getElementById('adminPanelScreen').classList.remove('hidden');
+        renderAdminShopsList();
+        document.getElementById('toggleSupplierModule').checked = appData.supplierModuleActive !== false;
+      } else {
+        showAlertPopup("अमान्य PIN", "गलत मास्टर एडमिन PIN दर्ज किया गया!");
+      }
+    }
+
+    function renderAdminShopsList() {
+      const list = document.getElementById('adminShopsList');
+      list.innerHTML = '';
+
+      // Ensure current shop is in master registry
+      if (!appData.masterShops) appData.masterShops = [];
+      if (appData.profile && !appData.masterShops.some(s => s.shopId === appData.profile.shopId)) {
+        appData.masterShops.push({
+          shopId: appData.profile.shopId,
+          shopName: appData.profile.shopName,
+          ownerName: appData.profile.ownerName,
+          isPro: appData.isPro
+        });
+      }
+
+      appData.masterShops.forEach((shop, index) => {
+        const item = document.createElement('div');
+        item.className = "flex justify-between items-center bg-white p-2 rounded border border-slate-200";
+        item.innerHTML = `
+          <div>
+            <strong>${shop.shopName}</strong> (${shop.ownerName})
+            <div class="text-[10px] text-slate-400">ID: ${shop.shopId}</div>
+          </div>
+          <button onclick="toggleShopProStatus(${index})" class="px-2 py-1 text-[11px] font-bold rounded ${shop.isPro ? 'bg-amber-400 text-slate-900' : 'bg-slate-200 text-slate-700'}">
+            ${shop.isPro ? 'PRO ACTIVE' : 'FREE'}
+          </button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    // Toggle PRO status with 2-Step Confirmation
+    function toggleShopProStatus(index) {
+      const targetShop = appData.masterShops[index];
+      const newStatus = !targetShop.isPro;
+
+      if (confirm(`क्या आप वाकई ${targetShop.shopName} का PRO स्टेटस ${newStatus ? 'चालू (ON)' : 'बंद (OFF)'} करना चाहते हैं?`)) {
+        targetShop.isPro = newStatus;
+        if (appData.profile && targetShop.shopId === appData.profile.shopId) {
+          appData.isPro = newStatus;
+        }
+        saveStateToLocalStorage();
+        updateUIProfileHeader();
+        renderAdminShopsList();
+        showAlertPopup("अपडेट किया गया", `PRO स्टेटस बदलकर ${newStatus ? 'ON' : 'OFF'} कर दिया गया है।`, false);
+      }
+    }
+
+    // Toggle Supplier Module View
+    function toggleSupplierModuleState(checked) {
+      appData.supplierModuleActive = checked;
+      saveStateToLocalStorage();
+      checkSupplierModuleVisibility();
+    }
+
+    function checkSupplierModuleVisibility() {
+      const suppBtn = document.getElementById('nav-suppliers');
+      if (appData.supplierModuleActive === false) {
+        suppBtn.classList.add('hidden');
+      } else {
+        suppBtn.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
